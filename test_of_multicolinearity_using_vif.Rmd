@@ -1,0 +1,101 @@
+---
+title: "VARIANCE INFLATION FACTOR AS A TEST OF MULTICOLINEARITY IN MULTIPLE REGRESSION MODEL"
+author: "Daniel James"
+date: "`r Sys.Date()`"
+output: html_document
+---
+  
+  ```{r setup, include = FALSE}
+knitr::opts_chunk$set(echo = TRUE,
+                      comment = "",
+                      collapse = TRUE,
+                      echo = TRUE,
+                      error = TRUE, # do not interrupt in case of errors
+                      message = FALSE,
+                      warning = FALSE,
+                      comma <- function(x) format(x, digits = 2, big.mark = ",")
+)
+````
+### Load packages and prepare multicore process
+### This recipe explains how to check multicollinearity in regression using R.
+
+### Variance inflation factor (VIF) is used for detecting the multicollinearity in a model, which measures the correlation and strength of correlation between the independent variables in a regression model. - If the value of VIF is less than 1: no correlation - If the value of VIF is between 1-5, there is moderate correlation - If the value of VIF is above 5: severe correlation
+
+### Step 1 - Install necessary packages
+
+```{r install_packages, include = TRUE}
+library(pacman)
+
+p_load(tidyverse)    # for easy data manipulation and visualization 
+p_load(caret)        # for easy machine learning workflow
+p_load(car)
+````
+
+### Step 2 - Define a Dataframe
+
+## We’ll use the Boston data set [in MASS package], introduced in Chapter @ref(regression-analysis), for predicting the median house value (mdev), in Boston Suburbs, based on multiple predictor variables.
+
+## We’ll randomly split the data into training set (80% for building a predictive model) and test set (20% for evaluating the model). Make sure to set seed for reproducibility.
+
+```{r creat_data_frame, include = TRUE}
+# Load the data
+data("Boston", package = "MASS")
+# Split the data into training and test set
+set.seed(123)
+training.samples <- Boston$medv |>
+  createDataPartition(p = 0.8, list = FALSE)
+train.data  <- Boston[training.samples, ]
+test.data <- Boston[-training.samples, ]
+````
+
+### Step 3 - Create a linear regression model
+
+```{r Create_a_linear_regression_model, include = TRUE}
+# Build the model
+model1 <- lm(medv ~., data = train.data)
+# Make predictions
+predictions <- model1 |> predict(test.data)
+# Model performance
+data.frame(
+  RMSE = RMSE(predictions, test.data$medv),
+  R2 = R2(predictions, test.data$medv)
+)
+````
+
+### Step 4 - Use the vif() function
+
+```{r Use_the_vif_function, include = TRUE}
+vif(model1)
+car::vif(model1)
+````
+
+### Step 5 - Visualize VIF Values
+
+```{r Visualize_VIF_Values, include = TRUE}
+
+vif_values <- vif(model1)           #create vector of VIF values
+
+barplot(vif_values, main = "VIF Values", horiz = TRUE, col = "steelblue") #create horizontal bar chart to display each VIF value
+
+abline(v = 5, lwd = 3, lty = 2)    #add vertical line at 5 as after 5 there is severe correlation
+````
+
+### After plotting the graph, user can does decide which variable to remove i.e not include in model building and check whether the coreesponding R squared value improves.
+
+### Step 6 - Multicollinearity test can be checked by
+
+```{r check_for_multicolinearity, include = TRUE}
+data_x <- train.data[,2:14]                                       # independent variables 
+
+var <- cor(data_x)                                         # independent variables correlation matrix 
+
+var_inv <- MASS::ginv(var)                                       # independent variables inverse correlation matrix 
+
+colnames(var_inv) <- colnames(data_x)                      # rename the row names and column names
+rownames(var_inv) <- colnames(data_x)
+
+col<- colorRampPalette(c("green", "white", "red"))(20)
+corrplot::corrplot(var_inv,method='pie', col = col, is.corr = F)              # visualize the multicollinearity
+corrplot::corrplot(var_inv,method='number', col = col, is.corr = F)              # visualize the multicollinearity
+#{"mode":"full","isActive":false}
+````
